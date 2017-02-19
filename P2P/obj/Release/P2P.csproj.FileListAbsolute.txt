@@ -1,0 +1,12 @@
+C:\Users\IVK\Desktop\P2P\P2P\bin\Release\P2P.exe.config
+C:\Users\IVK\Desktop\P2P\P2P\bin\Release\P2P.exe
+C:\Users\IVK\Desktop\P2P\P2P\bin\Release\P2P.pdb
+C:\Users\IVK\Desktop\P2P\P2P\obj\Release\P2P.formMain.resources
+C:\Users\IVK\Desktop\P2P\P2P\obj\Release\P2P.nameForm.resources
+C:\Users\IVK\Desktop\P2P\P2P\obj\Release\P2P.Properties.Resources.resources
+C:\Users\IVK\Desktop\P2P\P2P\obj\Release\P2P.csproj.GenerateResource.Cache
+C:\Users\IVK\Desktop\P2P\P2P\obj\Release\P2P.exe
+C:\Users\IVK\Desktop\P2P\P2P\obj\Release\P2P.pdb
+D:\OneDrive\Обучение\Универ\VI семестр\06 ОСИТ\P2P\P2P\bin\Release\P2P.exe.config
+D:\OneDrive\Обучение\Универ\VI семестр\06 ОСИТ\P2P\P2P\obj\Release\P2P.exe
+D:\OneDrive\Обучение\Универ\VI семестр\06 ОСИТ\P2P\P2P\obj\Release\P2P.pdb
