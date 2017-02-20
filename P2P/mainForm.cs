@@ -19,16 +19,20 @@ namespace P2P
     public partial class formMain : Form
     {
         delegate void StringToForm(string message);       //Делегат принимаемого сообщения
-        const int UDPPort = 58623;     //Номер порта
-        const int TCPPort = 1800;
-        const string broadcastAddress = "192.168.0.255";      //IP-адрес вещания
-        UdpClient receivingClient;      //Передатчик инф.
-        UdpClient sendingClient;        //Приемник инф.
-        Thread receivingThread;     //Поток отправления инф.
-        delegate void NewUser(string connectedUser);     //Делегат нового пользователя
-        TcpListener listener;
-        Thread listenerThread;
-        FileSystemWatcher watcher;
+
+        const int UdpPort = 58623;     //Номер порта
+        const int TcpPort = 1800;
+        const string broadcastUdpAddress = "192.168.0.255";      //IP-адрес вещания
+
+        UdpClient receivingUdpClient;      //Передатчик инф.
+        UdpClient sendingUdpClient;        //Приемник инф.
+
+        Thread receivingUdpThread;     //Поток отправления инф.
+        Thread listenerTcpThread;
+
+        TcpListener TCPlistener;
+
+        FileSystemWatcher FSwatcher;
 
         string userName;    //Имя пользователя чата
         string localIP;     //IP текущего пользователя
@@ -43,7 +47,7 @@ namespace P2P
         {
             if (File.Exists("name.txt"))   //Если файл с именем существует
             {
-                getUserNafeFromFile();      //Получить имя пользователя из файла
+                GetUserNameFromFile();      //Получить имя пользователя из файла
             }
             else
             {
@@ -51,7 +55,7 @@ namespace P2P
                 nf.ShowDialog();      //Показать форму с именем
                 this.Hide();        //Спрятать главню форму
                 if (nf.itClose) this.Close();       //Если форму с именем закрыли, то закрыть и главную форму
-                getUserNafeFromFile();      //Получить имя пользователя из файла
+                GetUserNameFromFile();      //Получить имя пользователя из файла
             }
 
             localIP = System.Net.Dns.GetHostByName(System.Net.Dns.GetHostName()).AddressList[0].ToString();
@@ -65,16 +69,16 @@ namespace P2P
                 Directory.CreateDirectory("share");     //Создать папку share
             }
 
-            InitializeSender();     //Инициализация передатчика
-            InitializeReciever();       //Инициализация приемника
+            InitializeUdpSender();     //Инициализация передатчика
+            InitializeUdpReciever();       //Инициализация приемника
             InitializeShareFolderCheck();       //Инициализация провеки расшаренной папки
 
-            watcher = new FileSystemWatcher("share");
-            watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
-            watcher.Changed += new FileSystemEventHandler(OnChanged);
-            watcher.Created += new FileSystemEventHandler(OnChanged);
-            watcher.Deleted += new FileSystemEventHandler(OnChanged);
-            watcher.EnableRaisingEvents = true;
+            FSwatcher = new FileSystemWatcher("share");
+            FSwatcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+            FSwatcher.Changed += new FileSystemEventHandler(ShareFolderChanged);
+            FSwatcher.Created += new FileSystemEventHandler(ShareFolderChanged);
+            FSwatcher.Deleted += new FileSystemEventHandler(ShareFolderChanged);
+            FSwatcher.EnableRaisingEvents = true;
 
 
             CreateIndexFile();      //Создать index-файл текущего пользователя
@@ -84,13 +88,13 @@ namespace P2P
 
             //////////////////////////////////////////////////////////////////////
             ThreadStart start = new ThreadStart(TCPListener);
-            listenerThread = new Thread(start);
-            listenerThread.IsBackground = true;
-            listenerThread.Start();
+            listenerTcpThread = new Thread(start);
+            listenerTcpThread.IsBackground = true;
+            listenerTcpThread.Start();
             //////////////////////////////////////////////////////////
         }
 
-        private void getUserNafeFromFile()      //Получить имя пользователя из файла
+        private void GetUserNameFromFile()      //Получить имя пользователя из файла
         {
             FileStream fs = new FileStream("name.txt", FileMode.Open, FileAccess.Read);
             StreamReader sr = new StreamReader(fs);
@@ -100,30 +104,30 @@ namespace P2P
             this.Text = "Hello, " + userName + "!";
         }
 
-        private void InitializeSender()     //Инициализация передатчика
+        private void InitializeUdpSender()     //Инициализация передатчика
         {
-            sendingClient = new UdpClient(broadcastAddress, UDPPort);      //Класс передатчика
-            sendingClient.EnableBroadcast = true;       //Разрешение вещания
+            sendingUdpClient = new UdpClient(broadcastUdpAddress, UdpPort);      //Класс передатчика
+            sendingUdpClient.EnableBroadcast = true;       //Разрешение вещания
         }
 
-        private void InitializeReciever()       //Инициализация приемника
+        private void InitializeUdpReciever()       //Инициализация приемника
         {
-            receivingClient = new UdpClient(UDPPort);      //Класс приемника
+            receivingUdpClient = new UdpClient(UdpPort);      //Класс приемника
 
             ThreadStart start = new ThreadStart(UDPReceiver);      //Создание нового потока
-            receivingThread = new Thread(start);        //Создание нового потока
-            receivingThread.IsBackground = true;        //Фоновый режим работы потока
-            receivingThread.Start();        //Старт потока
+            receivingUdpThread = new Thread(start);        //Создание нового потока
+            receivingUdpThread.IsBackground = true;        //Фоновый режим работы потока
+            receivingUdpThread.Start();        //Старт потока
         }
 
         private void UDPReceiver()
         {
-            StringToForm messageDelegate = MessageReceive;       //Создание делегата принимаемого сообщения
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, UDPPort);      //Сетевая конечная точка
+            StringToForm messageDelegate = RecievedMessageAdd;       //Создание делегата принимаемого сообщения
+            IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, UdpPort);      //Сетевая конечная точка
 
             while (true)
             {
-                byte[] recieveData = receivingClient.Receive(ref endPoint);    //Возвращает UDP-датаграмму, которая была послана удаленным узлом
+                byte[] recieveData = receivingUdpClient.Receive(ref endPoint);    //Возвращает UDP-датаграмму, которая была послана удаленным узлом
                 byte[] commandBytes = new byte[6];      //Массив байт комманды
                 byte[] data = new byte[recieveData.Length - 6];     //Массив файл данных
                 Array.Copy(recieveData, 6, data, 0, data.Length);       //Копирование данных в массив из принятого массива
@@ -159,14 +163,14 @@ namespace P2P
             }
         }
 
-        private void MessageReceive(string message)        //Ф-я добавления сообщения в rtb
+        private void RecievedMessageAdd(string message)        //Ф-я добавления сообщения в rtb
         {
             rtbChat.Text += "(" + DateTime.Now.ToLongTimeString() + ") " + message + "\n";       //Добавление в rtb принятого текста
         }
 
         private void ProcessingIndexFile(byte[] data)       //Обработка принятяного index-файла
         {
-            NewUser newUser = UserAdd;     //Создание делегата подключившегося пользовалетя
+            StringToForm newUser = UserAdd;     //Создание делегата подключившегося пользовалетя
 
             FileStream fs = new FileStream("index/index.temp", FileMode.Create, FileAccess.Write);      //Поток зааписи временного файла
             fs.Write(data, 0, data.Length);     //Запись данных во временный файл
@@ -228,7 +232,7 @@ namespace P2P
             TcpClient client = new TcpClient();
             try
             {
-                await client.ConnectAsync(address, TCPPort);
+                await client.ConnectAsync(address, TcpPort);
             }
             catch
             {
@@ -278,7 +282,7 @@ namespace P2P
             watcher.EnableRaisingEvents = true;*/
         }
 
-        private void OnChanged(object source, FileSystemEventArgs e)        //Если есть изменения в папке share
+        private void ShareFolderChanged(object source, FileSystemEventArgs e)        //Если есть изменения в папке share
         {
             CreateIndexFile();      //Создать index-файл
         }
@@ -318,14 +322,14 @@ namespace P2P
             byte[] indexFile = new byte [fs.Length];        //Массив байт index-файла
             fs.Read(indexFile, 0, indexFile.Length);        //Чтение index-файла в массив байт
             byte[] toSend = command.Concat(indexFile).ToArray();        //Объединение байт команды и index-файла
-            sendingClient.Send(toSend, toSend.Length);      //Отправка массива байтов
+            sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
             fs.Close();
         }
 
         private void SendIndexFileRequest()
         {
             byte[] toSend = Encoding.Unicode.GetBytes("IFR"+thisUser);     //Массив байт запроса
-            sendingClient.Send(toSend, toSend.Length);      //Отправка массива байтов
+            sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
 
         private void butSend_Click(object sender, EventArgs e)
@@ -343,7 +347,7 @@ namespace P2P
         private void MessageSend(string message)
         {
             byte[] toSend = Encoding.Unicode.GetBytes("MSG" + message);
-            sendingClient.Send(toSend, toSend.Length);      //Отправка массива байтов
+            sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
 
         private void rtbChat_TextChanged(object sender, EventArgs e)
@@ -396,7 +400,7 @@ namespace P2P
             InitializeTcpListener();
             string fileRequest = "UFR" + thisUser + "^" + fileName;
             byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);
-            sendingClient.Send(toSend, toSend.Length);      //Отправка массива байтов
+            sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
 
         private void InitializeTcpListener()
@@ -412,11 +416,11 @@ namespace P2P
 
         private async void TCPListener()
         {
-            watcher.EnableRaisingEvents = false;
-            listener = new TcpListener(IPAddress.Any, TCPPort);
-            listener.Start();
+            FSwatcher.EnableRaisingEvents = false;
+            TCPlistener = new TcpListener(IPAddress.Any, TcpPort);
+            TCPlistener.Start();
             a:
-            TcpClient client = await listener.AcceptTcpClientAsync();
+            TcpClient client = await TCPlistener.AcceptTcpClientAsync();
             NetworkStream ns = client.GetStream();
 
             long fileLength;
@@ -448,11 +452,11 @@ namespace P2P
                 totalRead += read;
             }
             fileStream.Close();
-            watcher.EnableRaisingEvents = true;
+            FSwatcher.EnableRaisingEvents = true;
             goto a;
-            ns.Close();
+            /*ns.Close();
             client.Close();
-            listener.Stop();
+            TCPlistener.Stop();*/ //!!!!!!!!!! Поток не закрывается!!!
         }
 
         private void tbMessage_KeyPress(object sender, KeyPressEventArgs e)
