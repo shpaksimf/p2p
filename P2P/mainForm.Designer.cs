@@ -155,6 +155,7 @@
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "formMain";
             this.Text = "P2P";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.formMain_FormClosing);
             this.Load += new System.EventHandler(this.formMain_Load);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();

@@ -92,6 +92,8 @@ namespace P2P
             listenerTcpThread.IsBackground = true;
             listenerTcpThread.Start();
             //////////////////////////////////////////////////////////
+
+            MessageSend("***User " + userName + " is connected***");
         }
 
         private void GetUserNameFromFile()      //Получить имя пользователя из файла
@@ -123,6 +125,7 @@ namespace P2P
         private void UDPReceiver()
         {
             StringToForm messageDelegate = RecievedMessageAdd;       //Создание делегата принимаемого сообщения
+            StringToForm leftingUserDelegate = DeleteUserFromLb;
             IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, UdpPort);      //Сетевая конечная точка
 
             while (true)
@@ -156,6 +159,12 @@ namespace P2P
                     case "IFR":     //Команда запроса index-файла (IndexFileRequest)
                         {
                             if (Encoding.Unicode.GetString(data) != thisUser) SendIndexFile();
+                            break;
+                        }
+                    case "ULP":    //Команда выхода пользователя из программы (UserLeftProgram) 
+                        {
+                            string leftingUser = Encoding.Unicode.GetString(data);
+                            Invoke(leftingUserDelegate, leftingUser);
                             break;
                         }
                     default: return;        //Если неопознанная команда - ничего не предпринимать
@@ -267,6 +276,11 @@ namespace P2P
             //MessageBox.Show("Sending complete!");
         }
 
+        private void DeleteUserFromLb(string leftingUser)
+        {
+            lbUsers.Items.Remove(leftingUser);
+        }
+
         private void LogWrite(string message)
         {
             rtbLog.Text += message + "\n";
@@ -303,8 +317,9 @@ namespace P2P
 
         private string ComputeMD5Checksum(string path)      //Вычисление хеш суммы файла
         {
-            using (FileStream fs = System.IO.File.OpenRead(path))
+            //using (FileStream fs = System.IO.File.OpenRead(path))
             {
+                FileStream fs = System.IO.File.OpenRead(path);
                 MD5 md5 = new MD5CryptoServiceProvider();
                 byte[] fileData = new byte[fs.Length];
                 fs.Read(fileData, 0, (int)fs.Length);
@@ -416,44 +431,47 @@ namespace P2P
 
         private async void TCPListener()
         {
+            StringToForm STF = LogWrite;
             FSwatcher.EnableRaisingEvents = false;
             TCPlistener = new TcpListener(IPAddress.Any, TcpPort);
             TCPlistener.Start();
-            a:
-            TcpClient client = await TCPlistener.AcceptTcpClientAsync();
-            NetworkStream ns = client.GetStream();
-
-            long fileLength;
-            string fileName;
+            while (true)
             {
-                byte[] fileNameBytes;
-                byte[] fileNameLengthBytes = new byte[4]; //int32
-                byte[] fileLengthBytes = new byte[8]; //int64
+                TcpClient client = await TCPlistener.AcceptTcpClientAsync();
+                NetworkStream ns = client.GetStream();
 
-                await ns.ReadAsync(fileLengthBytes, 0, 8); // int64
-                await ns.ReadAsync(fileNameLengthBytes, 0, 4); // int32
-                fileNameBytes = new byte[BitConverter.ToInt32(fileNameLengthBytes, 0)];
-                await ns.ReadAsync(fileNameBytes, 0, fileNameBytes.Length);
+                long fileLength;
+                string fileName;
+                {
+                    byte[] fileNameBytes;
+                    byte[] fileNameLengthBytes = new byte[4]; //int32
+                    byte[] fileLengthBytes = new byte[8]; //int64
 
-                fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
-                fileName = "share/" + ASCIIEncoding.Unicode.GetString(fileNameBytes);
+                    await ns.ReadAsync(fileLengthBytes, 0, 8); // int64
+                    await ns.ReadAsync(fileNameLengthBytes, 0, 4); // int32
+                    fileNameBytes = new byte[BitConverter.ToInt32(fileNameLengthBytes, 0)];
+                    await ns.ReadAsync(fileNameBytes, 0, fileNameBytes.Length);
+
+                    fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
+                    fileName = "share/" + ASCIIEncoding.Unicode.GetString(fileNameBytes);
+                }
+
+                FSwatcher.EnableRaisingEvents = false;
+                FileStream fileStream = File.Open(fileName, FileMode.Create);
+
+                // Receive
+                int read;
+                int totalRead = 0;
+                byte[] buffer = new byte[32 * 1024]; // 32k chunks
+                while ((read = await ns.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer, 0, read);
+                    totalRead += read;
+                }
+                fileStream.Close();
+                FSwatcher.EnableRaisingEvents = true;
+                Invoke(STF,"(" + DateTime.Now.ToLongTimeString() + ") " + "File " + Path.GetFileName(fileName) + " has been successfully downloaded!");
             }
-
-
-            FileStream fileStream = File.Open(fileName, FileMode.Create);
-
-            // Receive
-            int read;
-            int totalRead = 0;
-            byte[] buffer = new byte[32 * 1024]; // 32k chunks
-            while ((read = await ns.ReadAsync(buffer, 0, buffer.Length)) > 0)
-            {
-                await fileStream.WriteAsync(buffer, 0, read);
-                totalRead += read;
-            }
-            fileStream.Close();
-            FSwatcher.EnableRaisingEvents = true;
-            goto a;
             /*ns.Close();
             client.Close();
             TCPlistener.Stop();*/ //!!!!!!!!!! Поток не закрывается!!!
@@ -471,6 +489,20 @@ namespace P2P
         private void openShareFolderToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Process.Start("share");
+        }
+
+        private void formMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            MessageSend("***User " + userName + " disconnected***");
+
+            string fileRequest = "ULP" + thisUser;
+            byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);
+            sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
+
+            receivingUdpThread.Abort();
+            listenerTcpThread.Abort();
+            receivingUdpClient.Close();
+            sendingUdpClient.Close();
         }
     }
 }
