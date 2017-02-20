@@ -279,6 +279,8 @@ namespace P2P
         private void DeleteUserFromLb(string leftingUser)
         {
             lbUsers.Items.Remove(leftingUser);
+            lbFiles.Items.Clear();
+            btnDownload.Enabled = false;
         }
 
         private void LogWrite(string message)
