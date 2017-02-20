@@ -1,7 +1,5 @@
 # Add any directories, files, or patterns you don't want to be tracked by version control
-*.index
-index/
-bin/
-*.Cache
-*.cache
-*.suo
+P2P/**/*.index
+P2P/**/*.Cache
+P2P/**/*.cache
+P2P/**/*.txt
