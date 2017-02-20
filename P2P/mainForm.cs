@@ -506,5 +506,10 @@ namespace P2P
             receivingUdpClient.Close();
             sendingUdpClient.Close();
         }
+
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
     }
 }
