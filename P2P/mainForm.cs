@@ -12,6 +12,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Security.Cryptography;
 using System.IO;
+using System.Diagnostics;
 
 namespace P2P
 {
@@ -461,6 +462,11 @@ namespace P2P
                 butSend.PerformClick();     //Программное нажатие на кнопку
                 tbMessage.Focus();     //Фокус на строке ввода сообщения
             }
+        }
+
+        private void openShareFolderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Process.Start("share");
         }
     }
 }

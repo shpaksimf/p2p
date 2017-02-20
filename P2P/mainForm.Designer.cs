@@ -35,12 +35,16 @@
             this.tbMessage = new System.Windows.Forms.TextBox();
             this.btnDownload = new System.Windows.Forms.Button();
             this.rtbLog = new System.Windows.Forms.RichTextBox();
+            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
+            this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.openShareFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // lbUsers
             // 
             this.lbUsers.FormattingEnabled = true;
-            this.lbUsers.Location = new System.Drawing.Point(283, 12);
+            this.lbUsers.Location = new System.Drawing.Point(283, 27);
             this.lbUsers.Name = "lbUsers";
             this.lbUsers.Size = new System.Drawing.Size(249, 355);
             this.lbUsers.TabIndex = 0;
@@ -50,7 +54,7 @@
             // lbFiles
             // 
             this.lbFiles.FormattingEnabled = true;
-            this.lbFiles.Location = new System.Drawing.Point(538, 12);
+            this.lbFiles.Location = new System.Drawing.Point(538, 27);
             this.lbFiles.Name = "lbFiles";
             this.lbFiles.Size = new System.Drawing.Size(228, 329);
             this.lbFiles.TabIndex = 1;
@@ -59,7 +63,7 @@
             // 
             // rtbChat
             // 
-            this.rtbChat.Location = new System.Drawing.Point(12, 12);
+            this.rtbChat.Location = new System.Drawing.Point(12, 27);
             this.rtbChat.Name = "rtbChat";
             this.rtbChat.ReadOnly = true;
             this.rtbChat.Size = new System.Drawing.Size(265, 300);
@@ -70,7 +74,7 @@
             // 
             // butSend
             // 
-            this.butSend.Location = new System.Drawing.Point(12, 344);
+            this.butSend.Location = new System.Drawing.Point(12, 359);
             this.butSend.Name = "butSend";
             this.butSend.Size = new System.Drawing.Size(265, 23);
             this.butSend.TabIndex = 3;
@@ -81,7 +85,7 @@
             // 
             // tbMessage
             // 
-            this.tbMessage.Location = new System.Drawing.Point(12, 318);
+            this.tbMessage.Location = new System.Drawing.Point(12, 333);
             this.tbMessage.Name = "tbMessage";
             this.tbMessage.Size = new System.Drawing.Size(265, 20);
             this.tbMessage.TabIndex = 4;
@@ -90,7 +94,7 @@
             // btnDownload
             // 
             this.btnDownload.Enabled = false;
-            this.btnDownload.Location = new System.Drawing.Point(538, 344);
+            this.btnDownload.Location = new System.Drawing.Point(538, 359);
             this.btnDownload.Name = "btnDownload";
             this.btnDownload.Size = new System.Drawing.Size(228, 23);
             this.btnDownload.TabIndex = 5;
@@ -101,7 +105,7 @@
             // 
             // rtbLog
             // 
-            this.rtbLog.Location = new System.Drawing.Point(772, 12);
+            this.rtbLog.Location = new System.Drawing.Point(772, 27);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
             this.rtbLog.Size = new System.Drawing.Size(288, 355);
@@ -109,11 +113,36 @@
             this.rtbLog.TabStop = false;
             this.rtbLog.Text = "";
             // 
+            // menuStrip1
+            // 
+            this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fileToolStripMenuItem});
+            this.menuStrip1.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip1.Name = "menuStrip1";
+            this.menuStrip1.Size = new System.Drawing.Size(1072, 24);
+            this.menuStrip1.TabIndex = 7;
+            this.menuStrip1.Text = "menuStrip1";
+            // 
+            // fileToolStripMenuItem
+            // 
+            this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.openShareFolderToolStripMenuItem});
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
+            this.fileToolStripMenuItem.Text = "File";
+            // 
+            // openShareFolderToolStripMenuItem
+            // 
+            this.openShareFolderToolStripMenuItem.Name = "openShareFolderToolStripMenuItem";
+            this.openShareFolderToolStripMenuItem.Size = new System.Drawing.Size(168, 22);
+            this.openShareFolderToolStripMenuItem.Text = "Open share folder";
+            this.openShareFolderToolStripMenuItem.Click += new System.EventHandler(this.openShareFolderToolStripMenuItem_Click);
+            // 
             // formMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1072, 377);
+            this.ClientSize = new System.Drawing.Size(1072, 389);
             this.Controls.Add(this.rtbLog);
             this.Controls.Add(this.btnDownload);
             this.Controls.Add(this.tbMessage);
@@ -121,10 +150,14 @@
             this.Controls.Add(this.rtbChat);
             this.Controls.Add(this.lbFiles);
             this.Controls.Add(this.lbUsers);
+            this.Controls.Add(this.menuStrip1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MainMenuStrip = this.menuStrip1;
             this.Name = "formMain";
             this.Text = "P2P";
             this.Load += new System.EventHandler(this.formMain_Load);
+            this.menuStrip1.ResumeLayout(false);
+            this.menuStrip1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -139,6 +172,9 @@
         private System.Windows.Forms.TextBox tbMessage;
         private System.Windows.Forms.Button btnDownload;
         private System.Windows.Forms.RichTextBox rtbLog;
+        private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem openShareFolderToolStripMenuItem;
 
     }
 }
