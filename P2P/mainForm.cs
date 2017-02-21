@@ -198,7 +198,7 @@ namespace P2P
             sr.Close();
             readTempFile.Close();
 
-            //if (userInfo != thisUser)       ///Если присоеденившийся пользователь не текущий
+            if (userInfo != thisUser)       ///Если присоеденившийся пользователь не текущий
             {
                 File.Copy("index/index.temp", "index/" + userInfo + ".index", true);        //Копирование временного файла в index-файл пользователя
                 Invoke(newUser, userInfo);       //Выполнение делегата в потоке, которому принадлежит базовый дескриптор управления
