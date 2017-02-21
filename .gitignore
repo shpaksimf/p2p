@@ -2,5 +2,6 @@
 P2P/**/*.index
 P2P/**/*.Cache
 P2P/**/*.cache
+P2P/bin/Debug/
+P2P/obj/Debug/
 P2P/**/*.txt
-
