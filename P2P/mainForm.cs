@@ -18,7 +18,8 @@ namespace P2P
 {
     public partial class formMain : Form
     {
-        delegate void StringToForm(string message);       //Делегат принимаемого сообщения
+        delegate void StringToForm(string message);       //Делегат передающий строку
+        delegate void ActionToForm();       //Делегат для выполнения функций без аргументов
 
         const int UdpPort = 58623;     //Номер порта
         const int TcpPort = 1800;
@@ -29,6 +30,7 @@ namespace P2P
 
         Thread receivingUdpThread;     //Поток отправления инф.
         Thread listenerTcpThread;
+        Thread FSwatchetThread;
 
         TcpListener TCPlistener;
 
@@ -73,12 +75,17 @@ namespace P2P
             InitializeUdpReciever();       //Инициализация приемника
             InitializeShareFolderCheck();       //Инициализация провеки расшаренной папки
 
-            FSwatcher = new FileSystemWatcher("share");
+            /*FSwatcher = new FileSystemWatcher("share");
             FSwatcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
             FSwatcher.Changed += new FileSystemEventHandler(ShareFolderChanged);
             FSwatcher.Created += new FileSystemEventHandler(ShareFolderChanged);
             FSwatcher.Deleted += new FileSystemEventHandler(ShareFolderChanged);
-            FSwatcher.EnableRaisingEvents = true;
+            FSwatcher.EnableRaisingEvents = true;*/
+
+            ThreadStart startFSwatcherTh = new ThreadStart(InitializeShareFolderCheck);
+            listenerTcpThread = new Thread(startFSwatcherTh);
+            listenerTcpThread.IsBackground = true;
+            listenerTcpThread.Start();
 
 
             CreateIndexFile();      //Создать index-файл текущего пользователя
@@ -179,7 +186,7 @@ namespace P2P
 
         private void ProcessingIndexFile(byte[] data)       //Обработка принятяного index-файла
         {
-            StringToForm newUser = UserAdd;     //Создание делегата подключившегося пользовалетя
+            StringToForm newUser = ProcessingNewUser;     //Создание делегата подключившегося пользовалетя
 
             FileStream fs = new FileStream("index/index.temp", FileMode.Create, FileAccess.Write);      //Поток зааписи временного файла
             fs.Write(data, 0, data.Length);     //Запись данных во временный файл
@@ -191,7 +198,7 @@ namespace P2P
             sr.Close();
             readTempFile.Close();
 
-            if (userInfo != thisUser)       ///Если присоеденившийся пользователь не текущий
+            //if (userInfo != thisUser)       ///Если присоеденившийся пользователь не текущий
             {
                 File.Copy("index/index.temp", "index/" + userInfo + ".index", true);        //Копирование временного файла в index-файл пользователя
                 Invoke(newUser, userInfo);       //Выполнение делегата в потоке, которому принадлежит базовый дескриптор управления
@@ -200,9 +207,18 @@ namespace P2P
             File.Delete("index/index.temp");        //Удаление временного файла
         }
 
-        private void UserAdd(string connectedUser)      //Ф-я добавления пользователя в чат
+        private void ProcessingNewUser(string connectedUser)      //Ф-я добавления пользователя в чат
         {
-            lbUsers.Items.Add(connectedUser);        //добавление в lb нового пользователя
+            if (lbUsers.Items.Contains(connectedUser))      //Если в списке есть подключившийся пользователь
+            {
+                if (lbUsers.SelectedIndex == lbUsers.Items.IndexOf(connectedUser))       //Если выбран элемент подключившегося пользователя
+                {
+                    //lbUsers.SelectedIndexChanged += lbUsers_SelectedIndexChanged;
+                    lbUsers.SelectedItem = null;
+                    lbUsers.SelectedItem = connectedUser;
+                }
+            }
+            else lbUsers.Items.Add(connectedUser);        //Иначе добавление в lb нового пользователя
         }
 
         private async void ProcessingUserFileRequest(byte[] data)
@@ -290,17 +306,22 @@ namespace P2P
 
         private void InitializeShareFolderCheck()       //Запуск мониторинга папки share
         {
-            /*FileSystemWatcher watcher = new FileSystemWatcher("share");
-            watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
-            watcher.Changed += new FileSystemEventHandler(OnChanged);
-            watcher.Created += new FileSystemEventHandler(OnChanged);
-            watcher.Deleted += new FileSystemEventHandler(OnChanged);
-            watcher.EnableRaisingEvents = true;*/
+            FSwatcher = new FileSystemWatcher("share");
+            FSwatcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+            FSwatcher.Changed += new FileSystemEventHandler(ShareFolderChanged);
+            FSwatcher.Created += new FileSystemEventHandler(ShareFolderChanged);
+            FSwatcher.Deleted += new FileSystemEventHandler(ShareFolderChanged);
+            FSwatcher.EnableRaisingEvents = true;
         }
 
         private void ShareFolderChanged(object source, FileSystemEventArgs e)        //Если есть изменения в папке share
         {
-            CreateIndexFile();      //Создать index-файл
+            ActionToForm ATF1 = CreateIndexFile;
+            ActionToForm ATF2 = SendIndexFile;
+            Invoke(ATF1);
+            Invoke(ATF2);
+            //CreateIndexFile();      //Создать index-файл
+            //SendIndexFile();
         }
 
         public void CreateIndexFile()       //Создание index-файла
