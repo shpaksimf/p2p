@@ -210,10 +210,9 @@ namespace P2P
             StringToForm logWriteDelegate = LogWrite;
             string fullRequest = Encoding.Unicode.GetString(data);
             string[] request = fullRequest.Split('^');
-            if (request[0] == thisUser)
-            {
-                return;
-            }
+            if (request[0] == thisUser) return; // Проверка запроса от самого себя
+            if (request[2] != localIP) return; // Не отправлять файл если в запросе не указан айпи конкретного отправителя
+
             string fileName = request[1];
             string[] userInfo = request[0].Split('_');
             string userIP = userInfo[1];
@@ -407,6 +406,9 @@ namespace P2P
         private void btnDownload_Click(object sender, EventArgs e)
         {
             string fileName = lbFiles.SelectedItem.ToString();
+            string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];
+            MessageBox.Show(selectedUser);
+     
             if (File.Exists("share/" + fileName))
             {
                 if (MessageBox.Show("File " + fileName + " exist! Replace it?", "", MessageBoxButtons.YesNo) == DialogResult.No)
@@ -414,8 +416,8 @@ namespace P2P
                     return;
                 }
             }
-            InitializeTcpListener();
-            string fileRequest = "UFR" + thisUser + "^" + fileName;
+            //InitializeTcpListener();
+            string fileRequest = "UFR" + thisUser + "^" + fileName + "^" + selectedUser;
             byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);
             sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
