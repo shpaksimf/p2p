@@ -30,11 +30,11 @@ namespace P2P
 
         Thread receivingUdpThread;     //Поток отправления инф.
         Thread listenerTcpThread;
-        Thread FSwatchetThread;
+        Thread FSwatcherThread;
 
         TcpListener TCPlistener;
 
-        FileSystemWatcher FSwatcher;
+        //FileSystemWatcher FSwatcher;
 
         string userName;    //Имя пользователя чата
         string localIP;     //IP текущего пользователя
@@ -213,7 +213,6 @@ namespace P2P
             {
                 if (lbUsers.SelectedIndex == lbUsers.Items.IndexOf(connectedUser))       //Если выбран элемент подключившегося пользователя
                 {
-                    //lbUsers.SelectedIndexChanged += lbUsers_SelectedIndexChanged;
                     lbUsers.SelectedItem = null;
                     lbUsers.SelectedItem = connectedUser;
                 }
@@ -305,7 +304,7 @@ namespace P2P
 
         private void InitializeShareFolderCheck()       //Запуск мониторинга папки share
         {
-            FSwatcher = new FileSystemWatcher("share");
+            FileSystemWatcher FSwatcher = new FileSystemWatcher("share");
             FSwatcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
             FSwatcher.Changed += new FileSystemEventHandler(ShareFolderChanged);
             FSwatcher.Created += new FileSystemEventHandler(ShareFolderChanged);
@@ -319,8 +318,6 @@ namespace P2P
             ActionToForm ATF2 = SendIndexFile;
             Invoke(ATF1);
             Invoke(ATF2);
-            //CreateIndexFile();      //Создать index-файл
-            //SendIndexFile();
         }
 
         public void CreateIndexFile()       //Создание index-файла
@@ -428,7 +425,7 @@ namespace P2P
         {
             string fileName = lbFiles.SelectedItem.ToString();
             string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];
-            MessageBox.Show(selectedUser);
+            //MessageBox.Show(selectedUser);
      
             if (File.Exists("share/" + fileName))
             {
@@ -456,13 +453,14 @@ namespace P2P
 
         private async void TCPListener()
         {
+
             StringToForm STF = LogWrite;
-            FSwatcher.EnableRaisingEvents = false;
             TCPlistener = new TcpListener(IPAddress.Any, TcpPort);
             TCPlistener.Start();
             while (true)
             {
                 TcpClient client = await TCPlistener.AcceptTcpClientAsync();
+                //FSwatcher.EnableRaisingEvents = false;
                 NetworkStream ns = client.GetStream();
 
                 long fileLength;
@@ -481,7 +479,9 @@ namespace P2P
                     fileName = "share/" + ASCIIEncoding.Unicode.GetString(fileNameBytes);
                 }
 
-                FSwatcher.EnableRaisingEvents = false;
+                
+                //FSwatcher.EnableRaisingEvents = false;
+                Delegate.CreateDelegate(System.Type.EmptyTypes, FSwatcherThread, FSwatcher.
                 FileStream fileStream = File.Open(fileName, FileMode.Create);
 
                 // Receive
@@ -494,12 +494,17 @@ namespace P2P
                     totalRead += read;
                 }
                 fileStream.Close();
-                FSwatcher.EnableRaisingEvents = true;
+                //FSwatcher.EnableRaisingEvents = true;
                 Invoke(STF,"(" + DateTime.Now.ToLongTimeString() + ") " + "File " + Path.GetFileName(fileName) + " has been successfully downloaded!");
             }
             /*ns.Close();
             client.Close();
             TCPlistener.Stop();*/ //!!!!!!!!!! Поток не закрывается!!!
+        }
+
+        private void FSwatcherstop()
+        {
+            
         }
 
         private void tbMessage_KeyPress(object sender, KeyPressEventArgs e)
