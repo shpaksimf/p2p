@@ -25,12 +25,15 @@ namespace P2P
         const int TcpPort = 1800;
         const string broadcastUdpAddress = "192.168.0.255";      //IP-адрес вещания
 
+        bool sahreFldChanged = false;
+
         UdpClient receivingUdpClient;      //Передатчик инф.
         UdpClient sendingUdpClient;        //Приемник инф.
 
         Thread receivingUdpThread;     //Поток отправления инф.
         Thread listenerTcpThread;
-        Thread FSwatcherThread;
+
+        FileSystemWatcher FSwatcher;
 
         TcpListener TCPlistener;
 
@@ -74,19 +77,6 @@ namespace P2P
             InitializeUdpSender();     //Инициализация передатчика
             InitializeUdpReciever();       //Инициализация приемника
             InitializeShareFolderCheck();       //Инициализация провеки расшаренной папки
-
-            /*FSwatcher = new FileSystemWatcher("share");
-            FSwatcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
-            FSwatcher.Changed += new FileSystemEventHandler(ShareFolderChanged);
-            FSwatcher.Created += new FileSystemEventHandler(ShareFolderChanged);
-            FSwatcher.Deleted += new FileSystemEventHandler(ShareFolderChanged);
-            FSwatcher.EnableRaisingEvents = true;*/
-
-            ThreadStart startFSwatcherTh = new ThreadStart(InitializeShareFolderCheck);
-            listenerTcpThread = new Thread(startFSwatcherTh);
-            listenerTcpThread.IsBackground = true;
-            listenerTcpThread.Start();
-
 
             CreateIndexFile();      //Создать index-файл текущего пользователя
             SendIndexFile();        //Отправить index-файл всем пользователям
@@ -286,7 +276,7 @@ namespace P2P
 
             fileStream.Dispose();
             client.Close();
-            Invoke(logWriteDelegate, DateTime.Now.ToLongTimeString() + ":" + " The file " + fileName + " was downloaded by user " + userInfo[0]);
+            Invoke(logWriteDelegate, "The file " + fileName + " was downloaded by user " + userInfo[0]);
             //MessageBox.Show("Sending complete!");
         }
 
@@ -299,12 +289,12 @@ namespace P2P
 
         private void LogWrite(string message)
         {
-            rtbLog.Text += message + "\n";
+            rtbLog.Text += DateTime.Now.ToLongTimeString() + ": " + message + "\n";
         }
 
         private void InitializeShareFolderCheck()       //Запуск мониторинга папки share
         {
-            FileSystemWatcher FSwatcher = new FileSystemWatcher("share");
+            FSwatcher = new FileSystemWatcher("share");
             FSwatcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
             FSwatcher.Changed += new FileSystemEventHandler(ShareFolderChanged);
             FSwatcher.Created += new FileSystemEventHandler(ShareFolderChanged);
@@ -314,24 +304,38 @@ namespace P2P
 
         private void ShareFolderChanged(object source, FileSystemEventArgs e)        //Если есть изменения в папке share
         {
-            ActionToForm ATF1 = CreateIndexFile;
-            ActionToForm ATF2 = SendIndexFile;
-            Invoke(ATF1);
-            Invoke(ATF2);
+            try
+            {
+                FSwatcher.EnableRaisingEvents = false;
+
+                /* do stuff once */
+                ActionToForm ATF1 = CreateIndexFile;
+                ActionToForm ATF2 = SendIndexFile;
+                Invoke(ATF1);
+                Invoke(ATF2);
+            }
+
+            finally
+            {
+                FSwatcher.EnableRaisingEvents = true;
+            }
         }
 
         public void CreateIndexFile()       //Создание index-файла
         {
+            StringToForm toLog = LogWrite;
             FileStream fs = new FileStream(thisUser + ".index", FileMode.Create, FileAccess.Write);     //Поток записи index-файла
             StreamWriter sw = new StreamWriter(fs);
             sw.WriteLine(thisUser);     //Запись в первую строку текущего пользователя
             foreach (string file in Directory.GetFiles("share"))        //Для каждого файла из папки share
             {
-                string fileInfo = thisUser + "^" + Path.GetFileName(file) + "^" + ComputeMD5Checksum(file) + "\n";      //Строка с информацией о файле
+                FileInfo fi = new FileInfo(file);
+                string fileInfo = thisUser + "^" + Path.GetFileName(file) + "^" + ComputeMD5Checksum(file) + "^" + fi.Length.ToString() + "\n";      //Строка с информацией о файле
                 sw.Write(fileInfo);     //Запись строки с информацией о файле
             }
             sw.Close();
             fs.Close();     //Закрытие потока
+            Invoke(toLog, "Index file was created");
         }
 
         private string ComputeMD5Checksum(string path)      //Вычисление хеш суммы файла
@@ -351,6 +355,7 @@ namespace P2P
 
         private void SendIndexFile()        //Отправка index-файла
         {
+            StringToForm toLog = LogWrite;
             FileStream fs = new FileStream(thisUser + ".index", FileMode.Open, FileAccess.Read);        //Поток чтения index-файла текущего пользователя 
             byte[] command = Encoding.Unicode.GetBytes("RIF");     //Массив байт команды
             byte[] indexFile = new byte [fs.Length];        //Массив байт index-файла
@@ -358,6 +363,7 @@ namespace P2P
             byte[] toSend = command.Concat(indexFile).ToArray();        //Объединение байт команды и index-файла
             sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
             fs.Close();
+            Invoke(toLog, "Index file was sended");
         }
 
         private void SendIndexFileRequest()
@@ -405,7 +411,7 @@ namespace P2P
                 {
                     string mainstr = sr.ReadLine();
                     string[] str = mainstr.Split('^');
-                    lbFiles.Items.Add(str[1]);
+                    lbFiles.Items.Add(str[1]+ " (" +str[3] + " bytes)");
                 }
                 sr.Close();
                 fs.Close();
@@ -423,7 +429,7 @@ namespace P2P
 
         private void btnDownload_Click(object sender, EventArgs e)
         {
-            string fileName = lbFiles.SelectedItem.ToString();
+            string fileName = lbFiles.SelectedItem.ToString().Split('(')[0].TrimEnd();
             string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];
             //MessageBox.Show(selectedUser);
      
@@ -453,58 +459,59 @@ namespace P2P
 
         private async void TCPListener()
         {
-
             StringToForm STF = LogWrite;
             TCPlistener = new TcpListener(IPAddress.Any, TcpPort);
             TCPlistener.Start();
             while (true)
             {
                 TcpClient client = await TCPlistener.AcceptTcpClientAsync();
-                //FSwatcher.EnableRaisingEvents = false;
                 NetworkStream ns = client.GetStream();
 
-                long fileLength;
-                string fileName;
+                FSwatcher.EnableRaisingEvents = false;
+
+                try
                 {
-                    byte[] fileNameBytes;
-                    byte[] fileNameLengthBytes = new byte[4]; //int32
-                    byte[] fileLengthBytes = new byte[8]; //int64
+                    long fileLength;
+                    string fileName;
+                    {
+                        byte[] fileNameBytes;
+                        byte[] fileNameLengthBytes = new byte[4]; //int32
+                        byte[] fileLengthBytes = new byte[8]; //int64
 
-                    await ns.ReadAsync(fileLengthBytes, 0, 8); // int64
-                    await ns.ReadAsync(fileNameLengthBytes, 0, 4); // int32
-                    fileNameBytes = new byte[BitConverter.ToInt32(fileNameLengthBytes, 0)];
-                    await ns.ReadAsync(fileNameBytes, 0, fileNameBytes.Length);
+                        await ns.ReadAsync(fileLengthBytes, 0, 8); // int64
+                        await ns.ReadAsync(fileNameLengthBytes, 0, 4); // int32
+                        fileNameBytes = new byte[BitConverter.ToInt32(fileNameLengthBytes, 0)];
+                        await ns.ReadAsync(fileNameBytes, 0, fileNameBytes.Length);
 
-                    fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
-                    fileName = "share/" + ASCIIEncoding.Unicode.GetString(fileNameBytes);
+                        fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
+                        fileName = "share/" + ASCIIEncoding.Unicode.GetString(fileNameBytes);
+                    }
+
+                    FileStream fileStream = File.Open(fileName, FileMode.Create);
+
+                    // Receive
+                    int read;
+                    int totalRead = 0;
+                    byte[] buffer = new byte[32 * 1024]; // 32k chunks
+                    while ((read = await ns.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, read);
+                        totalRead += read;
+                    }
+                    fileStream.Close();
+                    Invoke(STF, "File " + Path.GetFileName(fileName) + " has been successfully downloaded!");
                 }
-
-                
-                //FSwatcher.EnableRaisingEvents = false;
-                Delegate.CreateDelegate(System.Type.EmptyTypes, FSwatcherThread, FSwatcher.
-                FileStream fileStream = File.Open(fileName, FileMode.Create);
-
-                // Receive
-                int read;
-                int totalRead = 0;
-                byte[] buffer = new byte[32 * 1024]; // 32k chunks
-                while ((read = await ns.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                catch
                 {
-                    await fileStream.WriteAsync(buffer, 0, read);
-                    totalRead += read;
+                    Invoke(STF, "Some trouble with file download!");
                 }
-                fileStream.Close();
-                //FSwatcher.EnableRaisingEvents = true;
-                Invoke(STF,"(" + DateTime.Now.ToLongTimeString() + ") " + "File " + Path.GetFileName(fileName) + " has been successfully downloaded!");
+                FSwatcher.EnableRaisingEvents = true;
+                CreateIndexFile();
+                SendIndexFile();
             }
             /*ns.Close();
             client.Close();
             TCPlistener.Stop();*/ //!!!!!!!!!! Поток не закрывается!!!
-        }
-
-        private void FSwatcherstop()
-        {
-            
         }
 
         private void tbMessage_KeyPress(object sender, KeyPressEventArgs e)
