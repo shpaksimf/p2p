@@ -113,6 +113,7 @@
             this.rtbLog.TabIndex = 6;
             this.rtbLog.TabStop = false;
             this.rtbLog.Text = "";
+            this.rtbLog.TextChanged += new System.EventHandler(this.rtbLog_TextChanged);
             // 
             // menuStrip1
             // 
