@@ -40,6 +40,9 @@ namespace P2P
         string localIP;     //IP текущего пользователя
         string thisUser;        //Строка с именем и IP текущего пользователя
 
+        Int64 recievingFileSize;
+        string recievingFileName;
+
         public formMain()
         {
             InitializeComponent();
@@ -391,8 +394,8 @@ namespace P2P
 
         private void rtbLog_TextChanged(object sender, EventArgs e)
         {
-            rtbChat.SelectionStart = rtbChat.Text.Length;       //Автоматическая прокрутка rtb
-            rtbChat.ScrollToCaret();        //Автоматическая прокрутка rtb
+            rtbLog.SelectionStart = rtbLog.Text.Length;       //Автоматическая прокрутка rtb
+            rtbLog.ScrollToCaret();        //Автоматическая прокрутка rtb
         }
 
         private void lbUsers_SelectedIndexChanged(object sender, EventArgs e)       //Обработчик выбора пользователя в списке
@@ -410,7 +413,7 @@ namespace P2P
                 {
                     string mainstr = sr.ReadLine();     //Общая строка из файла
                     string[] str = mainstr.Split('^');      //Массив с частями общей строки
-                    lbFiles.Items.Add(str[1]+ " (" +str[3] + " bytes)");        //Добавление файла в lbFiles
+                    lbFiles.Items.Add(str[1]+ "^" +str[3] + " bytes");        //Добавление файла в lbFiles
                 }
                 sr.Close();     //Остановка потока
                 fs.Close();     //Остановка потока
@@ -428,17 +431,18 @@ namespace P2P
 
         private void btnDownload_Click(object sender, EventArgs e)
         {
-            string fileName = lbFiles.SelectedItem.ToString().Split('(')[0].TrimEnd();      //Строка с именем файла
+            recievingFileName = lbFiles.SelectedItem.ToString().Split('^')[0].TrimEnd();      //Строка с именем файла
             string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];        //Строка с выбранным пользователем
+            recievingFileSize = Convert.ToInt64(lbFiles.SelectedItem.ToString().Split('^')[1].Split(' ')[0]);       //Размер скачиваемого файла (в байтах)
      
-            if (File.Exists("share/" + fileName))       //Если уже существует такой файл
+            if (File.Exists("share/" + recievingFileName))       //Если уже существует такой файл
             {
-                if (MessageBox.Show("File " + fileName + " exist! Replace it?", "", MessageBoxButtons.YesNo) == DialogResult.No)        //Если результат диалога о замене файла отрицательный
+                if (MessageBox.Show("File " + recievingFileName + " exist! Replace it?", "", MessageBoxButtons.YesNo) == DialogResult.No)        //Если результат диалога о замене файла отрицательный
                 {
                     return;     //Выйти из функции
                 }
             }
-            string fileRequest = "UFR" + thisUser + "^" + fileName + "^" + selectedUser;        //Строка с запросом файла
+            string fileRequest = "UFR" + thisUser + "^" + recievingFileName + "^" + selectedUser;        //Строка с запросом файла
             byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);     //Преобразование в массив байт
             sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
