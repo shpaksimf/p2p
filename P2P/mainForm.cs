@@ -19,6 +19,7 @@ namespace P2P
     public partial class formMain : Form
     {
         delegate void StringToForm(string message);       //Делегат передающий строку
+        delegate string StringToFormString(string message);     //Делегат, передающий строку и возвращающий строку
         delegate void ActionToForm();       //Делегат для выполнения функций без аргументов
 
         const int UdpPort = 58623;     //Номер UDO порта
@@ -42,6 +43,7 @@ namespace P2P
 
         Int64 recievingFileSize;
         string recievingFileName;
+        string recievingFileCheckSum;
 
         public formMain()
         {
@@ -187,7 +189,7 @@ namespace P2P
             sr.Close();     //Закрытие потока
             readTempFile.Close();       //Закрытие потока
 
-            if (userInfo != thisUser)       //Если присоеденившийся пользователь не текущий
+            //if (userInfo != thisUser)       //Если присоеденившийся пользователь не текущий
             {
                 File.Copy("index/index.temp", "index/" + userInfo + ".index", true);        //Копирование временного файла в index-файл пользователя
                 Invoke(newUser, userInfo);       //Выполнение делегата в потоке, которому принадлежит базовый дескриптор управления
@@ -253,14 +255,14 @@ namespace P2P
 
             NetworkStream ns = client.GetStream();      //Сетевой поток
 
-            { // Отправка информации о файле (надежнее, чем по UDP)
+            /*{ // Отправка информации о файле (надежнее, чем по UDP)
                 byte[] fileName1 = ASCIIEncoding.Unicode.GetBytes(file.Name);
                 byte[] fileNameLength = BitConverter.GetBytes(fileName1.Length);
                 byte[] fileLength = BitConverter.GetBytes(file.Length);
                 await ns.WriteAsync(fileLength, 0, fileLength.Length);
                 await ns.WriteAsync(fileNameLength, 0, fileNameLength.Length);
                 await ns.WriteAsync(fileName1, 0, fileName1.Length);
-            }
+            }*/
 
             // Отправка файла
             int read;
@@ -403,6 +405,7 @@ namespace P2P
             StringToForm toLog = LogWrite;
             if (lbUsers.SelectedItem == null) return;       //Если выбранный элемент не существует - выйти из функции
             lbFiles.Items.Clear();      //Очистка списка файлов
+            dgvFiles.Rows.Clear();      //Очистка списка файлов
             btnDownload.Enabled = false;        //Включение кнопки Download
             try
             {
@@ -414,6 +417,11 @@ namespace P2P
                     string mainstr = sr.ReadLine();     //Общая строка из файла
                     string[] str = mainstr.Split('^');      //Массив с частями общей строки
                     lbFiles.Items.Add(str[1]+ "^" +str[3] + " bytes");        //Добавление файла в lbFiles
+
+                    dgvFiles.Rows.Add();
+                    dgvFiles.Rows[dgvFiles.Rows.Count - 1].Cells[0].Value = str[1];
+                    dgvFiles.Rows[dgvFiles.Rows.Count - 1].Cells[1].Value = str[3];
+                    dgvFiles.Rows[dgvFiles.Rows.Count - 1].Cells[2].Value = str[2];
                 }
                 sr.Close();     //Остановка потока
                 fs.Close();     //Остановка потока
@@ -426,14 +434,22 @@ namespace P2P
 
         private void lbFiles_SelectedIndexChanged(object sender, EventArgs e)
         {
-            btnDownload.Enabled = true;     //Включение кнопки Download
+            //btnDownload.Enabled = true;     //Включение кнопки Download
         }
 
         private void btnDownload_Click(object sender, EventArgs e)
         {
-            recievingFileName = lbFiles.SelectedItem.ToString().Split('^')[0].TrimEnd();      //Строка с именем файла
+            int rowNumber = dgvFiles.CurrentRow.Index;
+            recievingFileName = dgvFiles.Rows[rowNumber].Cells[0].Value.ToString();      //Строка с именем файла
+
+            //recievingFileName = lbFiles.SelectedItem.ToString().Split('^')[0].TrimEnd();      //Строка с именем файла
+
             string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];        //Строка с выбранным пользователем
-            recievingFileSize = Convert.ToInt64(lbFiles.SelectedItem.ToString().Split('^')[1].Split(' ')[0]);       //Размер скачиваемого файла (в байтах)
+
+            //recievingFileSize = Convert.ToInt64(lbFiles.SelectedItem.ToString().Split('^')[1].Split(' ')[0]);       //Размер скачиваемого файла (в байтах)
+            recievingFileSize = Convert.ToInt64(dgvFiles.Rows[rowNumber].Cells[1].Value.ToString());       //Размер скачиваемого файла (в байтах)
+
+            recievingFileCheckSum = dgvFiles.Rows[rowNumber].Cells[2].Value.ToString();
      
             if (File.Exists("share/" + recievingFileName))       //Если уже существует такой файл
             {
@@ -449,7 +465,9 @@ namespace P2P
 
         private async void TCPListener()      //Приемник TCP
         {
-            StringToForm STF = LogWrite;        //Делегт записи в лог
+
+            StringToForm toLog = LogWrite;        //Делегт записи в лог
+            StringToFormString checkSum = ComputeMD5Checksum;
             TCPlistener = new TcpListener(IPAddress.Any, TcpPort);      //Новый приемник TCP
             TCPlistener.Start();        //Запуск приеника TCP
             while (true)        //Бесконечный цикл
@@ -461,7 +479,7 @@ namespace P2P
 
                 try
                 {
-                    long fileLength;        //Длина файла
+                    /*long fileLength;        //Длина файла
                     string fileName;        //Строка с именем файла
                     {       //Получение информации о файле
                         byte[] fileNameBytes;
@@ -475,9 +493,9 @@ namespace P2P
 
                         fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
                         fileName = "share/" + ASCIIEncoding.Unicode.GetString(fileNameBytes);
-                    }
+                    }*/
 
-                    FileStream fileStream = File.Open(fileName, FileMode.Create);       //Поток работы с файлом
+                    FileStream fileStream = File.Open("share/" +  recievingFileName, FileMode.Create);       //Поток работы с файлом
 
                     // Прием файла
                     int read;
@@ -489,11 +507,13 @@ namespace P2P
                         totalRead += read;
                     }
                     fileStream.Close();     //Закрытие потока
-                    Invoke(STF, "File " + Path.GetFileName(fileName) + " has been successfully downloaded!");       //Вывод сообщения в лог
+                    string currentCS = Invoke(checkSum, "share/" + recievingFileName).ToString();
+                    if (currentCS == recievingFileCheckSum) Invoke(toLog, "File " + Path.GetFileName("share/" + recievingFileName) + " has been successfully downloaded!");       //Вывод сообщения о удачной передаче файла в лог 
+                    else Invoke(toLog, "Checksum of file " + Path.GetFileName("share/" + recievingFileName) + " is not valid!");        //Вывод сообщения о неверной хэш-сумме
                 }
                 catch
                 {
-                    Invoke(STF, "Some trouble with file download!");        //Вывод сообщения в лог
+                    Invoke(toLog, "Some trouble with file download!");        //Вывод сообщения в лог
                 }
                 FSwatcher.EnableRaisingEvents = true;       //Разрешение прерываний наблюдателя за папкой share
                 CreateIndexFile();      //Создание index-файла
@@ -533,6 +553,11 @@ namespace P2P
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.Close();
+        }
+
+        private void dgvFiles_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            btnDownload.Enabled = true;     //Включение кнопки Download
         }
     }
 }

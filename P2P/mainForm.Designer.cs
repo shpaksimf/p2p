@@ -39,7 +39,12 @@
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openShareFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dgvFiles = new System.Windows.Forms.DataGridView();
+            this.DGVFileName = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.DGVFileSize = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.DGVFileCheckSum = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.menuStrip1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvFiles)).BeginInit();
             this.SuspendLayout();
             // 
             // lbUsers
@@ -47,7 +52,7 @@
             this.lbUsers.FormattingEnabled = true;
             this.lbUsers.Location = new System.Drawing.Point(283, 27);
             this.lbUsers.Name = "lbUsers";
-            this.lbUsers.Size = new System.Drawing.Size(249, 355);
+            this.lbUsers.Size = new System.Drawing.Size(218, 355);
             this.lbUsers.TabIndex = 0;
             this.lbUsers.TabStop = false;
             this.lbUsers.SelectedIndexChanged += new System.EventHandler(this.lbUsers_SelectedIndexChanged);
@@ -55,9 +60,9 @@
             // lbFiles
             // 
             this.lbFiles.FormattingEnabled = true;
-            this.lbFiles.Location = new System.Drawing.Point(538, 27);
+            this.lbFiles.Location = new System.Drawing.Point(507, 300);
             this.lbFiles.Name = "lbFiles";
-            this.lbFiles.Size = new System.Drawing.Size(228, 329);
+            this.lbFiles.Size = new System.Drawing.Size(308, 56);
             this.lbFiles.TabIndex = 1;
             this.lbFiles.TabStop = false;
             this.lbFiles.SelectedIndexChanged += new System.EventHandler(this.lbFiles_SelectedIndexChanged);
@@ -95,9 +100,9 @@
             // btnDownload
             // 
             this.btnDownload.Enabled = false;
-            this.btnDownload.Location = new System.Drawing.Point(538, 359);
+            this.btnDownload.Location = new System.Drawing.Point(507, 359);
             this.btnDownload.Name = "btnDownload";
-            this.btnDownload.Size = new System.Drawing.Size(228, 23);
+            this.btnDownload.Size = new System.Drawing.Size(308, 23);
             this.btnDownload.TabIndex = 5;
             this.btnDownload.TabStop = false;
             this.btnDownload.Text = "Download";
@@ -106,10 +111,10 @@
             // 
             // rtbLog
             // 
-            this.rtbLog.Location = new System.Drawing.Point(772, 27);
+            this.rtbLog.Location = new System.Drawing.Point(821, 27);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(288, 355);
+            this.rtbLog.Size = new System.Drawing.Size(239, 355);
             this.rtbLog.TabIndex = 6;
             this.rtbLog.TabStop = false;
             this.rtbLog.Text = "";
@@ -148,11 +153,58 @@
             this.exitToolStripMenuItem.Text = "Exit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             // 
+            // dgvFiles
+            // 
+            this.dgvFiles.AllowUserToAddRows = false;
+            this.dgvFiles.AllowUserToDeleteRows = false;
+            this.dgvFiles.AllowUserToResizeRows = false;
+            this.dgvFiles.BackgroundColor = System.Drawing.SystemColors.Window;
+            this.dgvFiles.ColumnHeadersHeight = 27;
+            this.dgvFiles.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            this.dgvFiles.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.DGVFileName,
+            this.DGVFileSize,
+            this.DGVFileCheckSum});
+            this.dgvFiles.Location = new System.Drawing.Point(507, 27);
+            this.dgvFiles.MultiSelect = false;
+            this.dgvFiles.Name = "dgvFiles";
+            this.dgvFiles.ReadOnly = true;
+            this.dgvFiles.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.Single;
+            this.dgvFiles.RowHeadersVisible = false;
+            this.dgvFiles.RowHeadersWidth = 50;
+            this.dgvFiles.Size = new System.Drawing.Size(308, 267);
+            this.dgvFiles.TabIndex = 9;
+            this.dgvFiles.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvFiles_CellClick);
+            // 
+            // DGVFileName
+            // 
+            this.DGVFileName.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.DGVFileName.HeaderText = "Name";
+            this.DGVFileName.MinimumWidth = 100;
+            this.DGVFileName.Name = "DGVFileName";
+            this.DGVFileName.ReadOnly = true;
+            // 
+            // DGVFileSize
+            // 
+            this.DGVFileSize.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.DisplayedCells;
+            this.DGVFileSize.HeaderText = "Size (b)";
+            this.DGVFileSize.Name = "DGVFileSize";
+            this.DGVFileSize.ReadOnly = true;
+            this.DGVFileSize.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.DGVFileSize.Width = 48;
+            // 
+            // DGVFileCheckSum
+            // 
+            this.DGVFileCheckSum.HeaderText = "CheckSum";
+            this.DGVFileCheckSum.Name = "DGVFileCheckSum";
+            this.DGVFileCheckSum.ReadOnly = true;
+            // 
             // formMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1072, 389);
+            this.Controls.Add(this.dgvFiles);
             this.Controls.Add(this.rtbLog);
             this.Controls.Add(this.btnDownload);
             this.Controls.Add(this.tbMessage);
@@ -169,6 +221,7 @@
             this.Load += new System.EventHandler(this.formMain_Load);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvFiles)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -187,6 +240,10 @@
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openShareFolderToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
+        private System.Windows.Forms.DataGridView dgvFiles;
+        private System.Windows.Forms.DataGridViewTextBoxColumn DGVFileName;
+        private System.Windows.Forms.DataGridViewTextBoxColumn DGVFileSize;
+        private System.Windows.Forms.DataGridViewTextBoxColumn DGVFileCheckSum;
 
     }
 }
