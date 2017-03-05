@@ -79,12 +79,15 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(346, 100);
+            this.ClientSize = new System.Drawing.Size(357, 101);
             this.Controls.Add(this.mbtnAccept);
             this.Controls.Add(this.mtbName);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
+            this.Movable = false;
             this.Name = "nameForm";
+            this.Resizable = false;
+            this.ShadowType = MetroFramework.Forms.MetroFormShadowType.AeroShadow;
             this.Text = "Enter your name (10 ch max):";
             this.ResumeLayout(false);
 

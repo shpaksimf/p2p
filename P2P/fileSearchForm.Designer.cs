@@ -54,6 +54,7 @@
             this.MaximizeBox = false;
             this.Name = "fileSearchForm";
             this.Resizable = false;
+            this.ShadowType = MetroFramework.Forms.MetroFormShadowType.AeroShadow;
             this.Text = "Search file";
             this.ResumeLayout(false);
 

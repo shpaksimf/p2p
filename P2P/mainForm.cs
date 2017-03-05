@@ -63,7 +63,6 @@ namespace P2P
             {
                 nameForm nf = new nameForm();     //Новая форма с именем
                 nf.ShowDialog();      //Показать форму с именем
-                //this.Hide();        //Спрятать главню форму
                 if (String.IsNullOrEmpty(nf.name))       //Если форму с именем закрыли
                 {
                     FileStream fs = new FileStream("name.txt", FileMode.Create, FileAccess.Write);
@@ -210,6 +209,8 @@ namespace P2P
 
         private void ProcessingNewUser(string connectedUser)      //Ф-я добавления пользователя в чат
         {
+            string[] userInfo = connectedUser.Split('_');       //Массив с именем и IP пользователя
+
             if (lbUsers.Items.Contains(connectedUser))      //Если в списке есть подключившийся пользователь
             {
                 if (lbUsers.SelectedIndex == lbUsers.Items.IndexOf(connectedUser))       //Если выбран элемент подключившегося пользователя
@@ -219,6 +220,34 @@ namespace P2P
                 }
             }
             else lbUsers.Items.Add(connectedUser);        //Иначе добавление в lb нового пользователя
+
+
+
+
+            bool userExist = false;     //Флаг, указывающий на то, есть ли в списке подключающийся пользователь
+            int userRow = 0;        //Ноер строки существующего пользователя
+            foreach (DataGridViewRow dgvr in mgUsers.Rows)      //Для каждой строки из списка пользователей
+            {
+                if ((dgvr.Cells[0].Value.ToString() == userInfo[0]) && (dgvr.Cells[1].Value.ToString() == userInfo[1]))     //Если строка совпадает с обрабатываемым пользователем
+                {
+                    userExist = true;       //Установка флага 
+                    userRow = dgvr.Index;       //Запись номера строи
+                }
+            }
+            if (userExist)      //Если флаг установлен
+            {
+                if (mgUsers.SelectedRows[0].Index == userRow)       //Если выбран существующий пользователь
+                {
+                    mgUsers.ClearSelection();       //Сброс выделения
+                    mgUsers.Rows[userRow].Cells[0].Selected = true;     //Снова его выделить (для обновления списка файлов)
+                }
+            }
+            else
+            {
+                mgUsers.Rows.Add();     //Добавление строку для нового пользователя
+                mgUsers.Rows[mgUsers.Rows.Count - 1].Cells[0].Value = userInfo[0];      //Добавление имени пользователя
+                mgUsers.Rows[mgUsers.Rows.Count - 1].Cells[1].Value = userInfo[1];      //Добавление IP-адреса пользователя
+            }
         }
 
         private async void ProcessingUserFileRequest(byte[] data)
@@ -228,7 +257,6 @@ namespace P2P
             string[] request = fullRequest.Split('^');      //Разделение строки на подстроки
             if (request[0] == thisUser)
             {
-                Invoke(toLog, "There is no need to download from myself!");       //Сообщение о неверном IP
                 return; // Если запрос пришел от себя - выйти из функции
             }
             if (request[2] != localIP) return; // Если запрос не текущему пользователю - выйти из функции
@@ -296,9 +324,24 @@ namespace P2P
 
         private void DeleteUserFromLb(string leftingUser)       //Удаление пользователя из listbox
         {
+            string[] userInfo = leftingUser.Split('_');       //Массив с именем и IP пользователя
+            int userRow = 0;        //Номер строки пользователя
+            foreach (DataGridViewRow dgvr in mgUsers.Rows)      //Для каждой строки из списка пользователей
+            {
+                if ((dgvr.Cells[0].Value.ToString() == userInfo[0]) && (dgvr.Cells[1].Value.ToString() == userInfo[1]))     //Если строка совпадает с обрабатываемым пользователем
+                {
+                    userRow = dgvr.Index;       //Запись номера строи
+                }
+            }
+            mgUsers.Rows.RemoveAt(userRow);     //Удаление строки с пользователем
+
             lbUsers.Items.Remove(leftingUser);      //Удаление пользователя
-            mgFiles.Rows.Clear();      //Очистка списка файлов
-            mbtnDownload.Enabled = false;        //Отключение кнопки Download
+
+            if (mgFiles.CurrentRow.Index == userRow)        //Если выбран удаляемый пользователь
+            {
+                mgFiles.Rows.Clear();      //Очистка списка файлов
+                mbtnDownload.Enabled = false;        //Отключение кнопки Download
+            }
         }
 
         private void LogWrite(string message)       //Запись строки в лог
@@ -344,7 +387,7 @@ namespace P2P
             foreach (string file in Directory.GetFiles("share"))        //Для каждого файла из папки share
             {
                 FileInfo fi = new FileInfo(file);       //Класс с информацией о файле
-                string fileInfo = thisUser + "^" + Path.GetFileName(file) + "^" + ComputeMD5Checksum(file) + "^" + fi.Length.ToString() + "\n";      //Строка с информацией о файле
+                string fileInfo = Path.GetFileName(file) + "^" + fi.Length.ToString() + "^" + ComputeMD5Checksum(file) + "\n";      //Строка с информацией о файле
                 sw.Write(fileInfo);     //Запись строки с информацией о файле
             }
             sw.Close();     //Закрытие потока
@@ -435,8 +478,8 @@ namespace P2P
                     string[] str = mainstr.Split('^');      //Массив с частями общей строки
 
                     mgFiles.Rows.Add();     //Добавление строки в список файлов
-                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[0].Value = str[1];       //Добавление имени пользователя в строку
-                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[1].Value = str[3];       //Добавление размера файла в строку
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[0].Value = str[0];       //Добавление имени пользователя в строку
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[1].Value = str[1];       //Добавление размера файла в строку
                     mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[2].Value = str[2];       //Добавление хэш-суммы в строку
                 }
                 sr.Close();     //Остановка потока
@@ -462,7 +505,9 @@ namespace P2P
 
             //recievingFileName = lbFiles.SelectedItem.ToString().Split('^')[0].TrimEnd();      //Строка с именем файла
 
-            string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];        //Строка с выбранным пользователем
+            //string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];        //Строка с выбранным пользователем
+
+            string selectedUserIP = mgUsers.SelectedRows[0].Cells[1].Value.ToString();        //Строка с выбранным пользователем
 
             //recievingFileSize = Convert.ToInt64(lbFiles.SelectedItem.ToString().Split('^')[1].Split(' ')[0]);       //Размер скачиваемого файла (в байтах)
             recievingFileSize = Convert.ToInt64(mgFiles.Rows[rowNumber].Cells[1].Value.ToString());       //Размер скачиваемого файла (в байтах)
@@ -476,7 +521,7 @@ namespace P2P
                     return;     //Выйти из функции
                 }
             }
-            string fileRequest = "UFR" + thisUser + "^" + recievingFileName + "^" + selectedUser;        //Строка с запросом файла
+            string fileRequest = "UFR" + thisUser + "^" + recievingFileName + "^" + selectedUserIP;        //Строка с запросом файла
             byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);     //Преобразование в массив байт
             sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
@@ -566,6 +611,12 @@ namespace P2P
             listenerTcpThread.Abort();
             receivingUdpClient.Close();
             sendingUdpClient.Close();
+
+            foreach (string file in Directory.GetFiles(Environment.CurrentDirectory.ToString()))
+            {
+                FileInfo fi = new FileInfo(file);
+                if (fi.Extension == ".index") File.Delete(fi.FullName);
+            }
         }
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
@@ -597,6 +648,55 @@ namespace P2P
             nameForm nf = new nameForm();     //Новая форма с именем
             nf.ShowDialog();      //Показать форму с именем
             if (!String.IsNullOrEmpty(nf.name)) Application.Restart();
+        }
+
+        private void mgUsers_SelectionChanged(object sender, EventArgs e)
+        {
+            StringToForm toLog = LogWrite;
+            StringToForm toLabel = fileListLabelChange;
+
+            if (mgUsers.SelectedCells.Count == 0)       //Если не выбран никако элемент
+            {
+                Invoke(toLabel, "File list is empty");      //Изменение надписи
+                return;       //Если выбранный элемент не существует - выйти из функции
+            }
+            mgFiles.Rows.Clear();      //Очистка списка файлов
+            mbtnDownload.Enabled = false;        //Включение кнопки Download
+            try
+            {
+                if ((mgUsers.SelectedRows[0].Cells[0].Value == null) || (mgUsers.SelectedRows[0].Cells[1].Value == null)) return;
+                FileStream fs = new FileStream("index/" + mgUsers.SelectedRows[0].Cells[0].Value.ToString() + "_" + mgUsers.SelectedRows[0].Cells[1].Value.ToString() + ".index", FileMode.Open, FileAccess.Read);      //Поток работы с файлом
+                StreamReader sr = new StreamReader(fs);     //Поток работы с текстовым файлом
+                sr.ReadLine();      //Чтение первой строки
+                while (!sr.EndOfStream)     //Чтение всех строк до конца файла
+                {
+                    string mainstr = sr.ReadLine();     //Общая строка из файла
+                    string[] str = mainstr.Split('^');      //Массив с частями общей строки
+
+                    mgFiles.Rows.Add();     //Добавление строки в список файлов
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[0].Value = str[0];       //Добавление имени пользователя в строку
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[1].Value = str[1];       //Добавление размера файла в строку
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[2].Value = str[2];       //Добавление хэш-суммы в строку
+                }
+                sr.Close();     //Остановка потока
+                fs.Close();     //Остановка потока
+
+                Invoke(toLabel, mgUsers.SelectedRows[0].Cells[0].Value.ToString() + "'s shared files:");      //Изменение надписи
+            }
+            catch
+            {
+                Invoke(toLog, "Ошибка чтения списка файлов");        //вывод сообщения в лог
+            }
+        }
+
+        private void fileListLabelChange(string str)
+        {
+            metroLabel2.Text = str;
+        }
+
+        private void testToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
