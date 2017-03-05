@@ -14,9 +14,12 @@ using System.Security.Cryptography;
 using System.IO;
 using System.Diagnostics;
 
+using MetroFramework.Forms;
+using MetroFramework.Components;
+
 namespace P2P
 {
-    public partial class formMain : Form
+    public partial class formMain : MetroForm
     {
         delegate void StringToForm(string message);       //Делегат передающий строку
         delegate string StringToFormString(string message);     //Делегат, передающий строку и возвращающий строку
@@ -60,8 +63,15 @@ namespace P2P
             {
                 nameForm nf = new nameForm();     //Новая форма с именем
                 nf.ShowDialog();      //Показать форму с именем
-                this.Hide();        //Спрятать главню форму
-                if (nf.itClose) this.Close();       //Если форму с именем закрыли, то закрыть и главную форму
+                //this.Hide();        //Спрятать главню форму
+                if (String.IsNullOrEmpty(nf.name))       //Если форму с именем закрыли
+                {
+                    FileStream fs = new FileStream("name.txt", FileMode.Create, FileAccess.Write);
+                    StreamWriter sw = new StreamWriter(fs);
+                    sw.Write(System.Net.Dns.GetHostName());
+                    sw.Close();
+                    fs.Close();
+                }
                 GetUserNameFromFile();      //Получить имя пользователя из файла
             }
 
@@ -213,10 +223,14 @@ namespace P2P
 
         private async void ProcessingUserFileRequest(byte[] data)
         {
-            StringToForm logWriteDelegate = LogWrite;       //Делегат записи строки в лог
+            StringToForm toLog = LogWrite;       //Делегат записи строки в лог
             string fullRequest = Encoding.Unicode.GetString(data);      //Строка с полным запросом
             string[] request = fullRequest.Split('^');      //Разделение строки на подстроки
-            if (request[0] == thisUser) return; // Если запрос пришел от себя - выйти из функции
+            if (request[0] == thisUser)
+            {
+                Invoke(toLog, "There is no need to download from myself!");       //Сообщение о неверном IP
+                return; // Если запрос пришел от себя - выйти из функции
+            }
             if (request[2] != localIP) return; // Если запрос не текущему пользователю - выйти из функции
 
             string fileName = request[1];       //Строка с именем файла
@@ -228,7 +242,7 @@ namespace P2P
             FileStream fileStream;      //Поток работы с файлом
             if (!IPAddress.TryParse(userIP, out address))       //Если IP-адрес указан неверно
             {
-                Invoke(logWriteDelegate,"Error with IP Address");       //Сообщение о неверном IP
+                Invoke(toLog,"Error with IP Address");       //Сообщение о неверном IP
                 return;     //Выход из функции
             }
             try
@@ -238,7 +252,7 @@ namespace P2P
             }
             catch
             {
-                Invoke(logWriteDelegate, "Error opening file");     //Сообщение о ошибке открытия файла  
+                Invoke(toLog, "Error opening file");     //Сообщение о ошибке открытия файла  
                 return;     //Выйли из функции
             }
 
@@ -249,7 +263,7 @@ namespace P2P
             }
             catch
             {
-                Invoke(logWriteDelegate, "Error connecting to destination");        //Сообщение о ошибке соединения
+                Invoke(toLog, "Error connecting to destination");        //Сообщение о ошибке соединения
                 return;     //выйти из функции
             }
 
@@ -277,14 +291,14 @@ namespace P2P
             fileStream.Dispose();
             fileStream.Close();
             client.Close();
-            Invoke(logWriteDelegate, "The file " + fileName + " was downloaded by user " + userInfo[0]);        //Сообщение о скафивании файла пользователем
+            Invoke(toLog, "The file " + fileName + " was downloaded by user " + userInfo[0]);        //Сообщение о скафивании файла пользователем
         }    
 
         private void DeleteUserFromLb(string leftingUser)       //Удаление пользователя из listbox
         {
             lbUsers.Items.Remove(leftingUser);      //Удаление пользователя
-            lbFiles.Items.Clear();      //Очистка списка файлов
-            btnDownload.Enabled = false;        //Отключение кнопки Download
+            mgFiles.Rows.Clear();      //Очистка списка файлов
+            mbtnDownload.Enabled = false;        //Отключение кнопки Download
         }
 
         private void LogWrite(string message)       //Запись строки в лог
@@ -369,14 +383,14 @@ namespace P2P
             sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
 
-        private void butSend_Click(object sender, EventArgs e)      //Обработчик нажатия кнопки Send
+        private void mbtnSend_Click(object sender, EventArgs e)      //Обработчик нажатия кнопки Send
         {
-            tbMessage.Text = tbMessage.Text.TrimEnd(' ');       //Удаление пробелов из конца сообщения
-            tbMessage.Text = tbMessage.Text.TrimStart(' ');     //Удаление пробелов с начала сообщения
-            if (!string.IsNullOrEmpty(tbMessage.Text))      //Если сообщение не пустое
+            mtbMessage.Text = mtbMessage.Text.TrimEnd(' ');       //Удаление пробелов из конца сообщения
+            mtbMessage.Text = mtbMessage.Text.TrimStart(' ');     //Удаление пробелов с начала сообщения
+            if (!string.IsNullOrEmpty(mtbMessage.Text))      //Если сообщение не пустое
             {
-                MessageSend(userName + ": " + tbMessage.Text);      //Отправка сообщения
-                tbMessage.Clear();      //Очистка поля ввода
+                MessageSend(userName + ": " + mtbMessage.Text);      //Отправка сообщения
+                mtbMessage.Clear();      //Очистка поля ввода
             }
             else return;        //Иначе выйти из функции
         }
@@ -403,10 +417,13 @@ namespace P2P
         private void lbUsers_SelectedIndexChanged(object sender, EventArgs e)       //Обработчик выбора пользователя в списке
         {
             StringToForm toLog = LogWrite;
-            if (lbUsers.SelectedItem == null) return;       //Если выбранный элемент не существует - выйти из функции
-            lbFiles.Items.Clear();      //Очистка списка файлов
-            dgvFiles.Rows.Clear();      //Очистка списка файлов
-            btnDownload.Enabled = false;        //Включение кнопки Download
+            if (lbUsers.SelectedItem == null)
+            {
+                return;       //Если выбранный элемент не существует - выйти из функции
+                metroLabel2.Text = "File list is empty";      //Изменение надписи
+            }
+            mgFiles.Rows.Clear();      //Очистка списка файлов
+            mbtnDownload.Enabled = false;        //Включение кнопки Download
             try
             {
                 FileStream fs = new FileStream("index/" + lbUsers.SelectedItem.ToString() + ".index", FileMode.Open, FileAccess.Read);      //Поток работы с файлом
@@ -416,15 +433,16 @@ namespace P2P
                 {
                     string mainstr = sr.ReadLine();     //Общая строка из файла
                     string[] str = mainstr.Split('^');      //Массив с частями общей строки
-                    lbFiles.Items.Add(str[1]+ "^" +str[3] + " bytes");        //Добавление файла в lbFiles
 
-                    dgvFiles.Rows.Add();
-                    dgvFiles.Rows[dgvFiles.Rows.Count - 1].Cells[0].Value = str[1];
-                    dgvFiles.Rows[dgvFiles.Rows.Count - 1].Cells[1].Value = str[3];
-                    dgvFiles.Rows[dgvFiles.Rows.Count - 1].Cells[2].Value = str[2];
+                    mgFiles.Rows.Add();     //Добавление строки в список файлов
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[0].Value = str[1];       //Добавление имени пользователя в строку
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[1].Value = str[3];       //Добавление размера файла в строку
+                    mgFiles.Rows[mgFiles.Rows.Count - 1].Cells[2].Value = str[2];       //Добавление хэш-суммы в строку
                 }
                 sr.Close();     //Остановка потока
                 fs.Close();     //Остановка потока
+
+                metroLabel2.Text = lbUsers.SelectedItem.ToString().Split('_')[0] + "'s shared files:";      //Изменение надписи
             }
             catch
             {
@@ -434,22 +452,22 @@ namespace P2P
 
         private void lbFiles_SelectedIndexChanged(object sender, EventArgs e)
         {
-            //btnDownload.Enabled = true;     //Включение кнопки Download
+            //mbtnDownload.Enabled = true;     //Включение кнопки Download
         }
 
-        private void btnDownload_Click(object sender, EventArgs e)
+        private void mbtnDownload_Click(object sender, EventArgs e)
         {
-            int rowNumber = dgvFiles.CurrentRow.Index;
-            recievingFileName = dgvFiles.Rows[rowNumber].Cells[0].Value.ToString();      //Строка с именем файла
+            int rowNumber = mgFiles.CurrentRow.Index;
+            recievingFileName = mgFiles.Rows[rowNumber].Cells[0].Value.ToString();      //Строка с именем файла
 
             //recievingFileName = lbFiles.SelectedItem.ToString().Split('^')[0].TrimEnd();      //Строка с именем файла
 
             string selectedUser = lbUsers.SelectedItem.ToString().Split('_')[1];        //Строка с выбранным пользователем
 
             //recievingFileSize = Convert.ToInt64(lbFiles.SelectedItem.ToString().Split('^')[1].Split(' ')[0]);       //Размер скачиваемого файла (в байтах)
-            recievingFileSize = Convert.ToInt64(dgvFiles.Rows[rowNumber].Cells[1].Value.ToString());       //Размер скачиваемого файла (в байтах)
+            recievingFileSize = Convert.ToInt64(mgFiles.Rows[rowNumber].Cells[1].Value.ToString());       //Размер скачиваемого файла (в байтах)
 
-            recievingFileCheckSum = dgvFiles.Rows[rowNumber].Cells[2].Value.ToString();
+            recievingFileCheckSum = mgFiles.Rows[rowNumber].Cells[2].Value.ToString();
      
             if (File.Exists("share/" + recievingFileName))       //Если уже существует такой файл
             {
@@ -521,12 +539,12 @@ namespace P2P
             }
         }
 
-        private void tbMessage_KeyPress(object sender, KeyPressEventArgs e)
+        private void mtbMessage_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (e.KeyChar == 13)        //Отправка сообщения по нажатию на Enter
             {
-                butSend.PerformClick();     //Программное нажатие на кнопку
-                tbMessage.Focus();     //Фокус на строке ввода сообщения
+                mbtnSend.PerformClick();     //Программное нажатие на кнопку
+                mtbMessage.Focus();     //Фокус на строке ввода сообщения
             }
         }      
 
@@ -555,9 +573,30 @@ namespace P2P
             this.Close();
         }
 
-        private void dgvFiles_CellClick(object sender, DataGridViewCellEventArgs e)
+        private void mgFiles_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            btnDownload.Enabled = true;     //Включение кнопки Download
+            mbtnDownload.Enabled = true;     //Включение кнопки Download
+        }
+
+        private void mgFiles_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == 13)        //Отправка сообщения по нажатию на Enter
+            {
+                mbtnDownload.PerformClick();     //Программное нажатие на кнопку
+            }
+        }
+
+        private void searchFileToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            fileSearchForm fSF = new fileSearchForm();
+            fSF.ShowDialog();
+        }
+
+        private void changeNameToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            nameForm nf = new nameForm();     //Новая форма с именем
+            nf.ShowDialog();      //Показать форму с именем
+            if (!String.IsNullOrEmpty(nf.name)) Application.Restart();
         }
     }
 }
