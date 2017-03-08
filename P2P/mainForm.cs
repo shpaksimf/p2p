@@ -631,7 +631,7 @@ namespace P2P
 
         private void mgFiles_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (e.KeyChar == 13)        //Отправка сообщения по нажатию на Enter
+            if (e.KeyChar == 13)        //Если нажата клавиша Enter
             {
                 mbtnDownload.PerformClick();     //Программное нажатие на кнопку
             }
@@ -641,6 +641,24 @@ namespace P2P
         {
             fileSearchForm fSF = new fileSearchForm();
             fSF.ShowDialog();
+
+            recievingFileName = fSF.fFName;      //Строка с именем файла
+            string selectedUserIP = fSF.fFIP;        //Строка с выбранным пользователем
+
+            recievingFileSize = Convert.ToInt64(fSF.fFSize);       //Размер скачиваемого файла (в байтах)
+
+            recievingFileCheckSum = fSF.fFCheckSum;
+
+            if (File.Exists("share/" + recievingFileName))       //Если уже существует такой файл
+            {
+                if (MessageBox.Show("File " + recievingFileName + " exist! Replace it?", "", MessageBoxButtons.YesNo) == DialogResult.No)        //Если результат диалога о замене файла отрицательный
+                {
+                    return;     //Выйти из функции
+                }
+            }
+            string fileRequest = "UFR" + thisUser + "^" + recievingFileName + "^" + selectedUserIP;        //Строка с запросом файла
+            byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);     //Преобразование в массив байт
+            sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
 
         private void changeNameToolStripMenuItem_Click(object sender, EventArgs e)
