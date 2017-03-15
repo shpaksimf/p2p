@@ -537,9 +537,10 @@ namespace P2P
 
                 FSwatcher.EnableRaisingEvents = false;      //Запрет прерываний наблюдателя за папкой share
 
+                FileStream fileStream = File.Open("share/" + recievingFileName, FileMode.Create);       //Поток работы с файлом
+
                 try
                 {
-                    FileStream fileStream = File.Open("share/" +  recievingFileName, FileMode.Create);       //Поток работы с файлом
 
                     // Прием файла
                     int read;
@@ -565,6 +566,8 @@ namespace P2P
                 catch
                 {
                     Invoke(toLog, "Some trouble with file download!");        //Вывод сообщения в лог
+                    fileStream.Close();     //Закрытие потока
+                    File.Delete("share/" + recievingFileName);
                 }
                 FSwatcher.EnableRaisingEvents = true;       //Разрешение прерываний наблюдателя за папкой share
                 CreateIndexFile();      //Создание index-файла

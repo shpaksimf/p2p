@@ -37,6 +37,12 @@ namespace P2P
 
         private void fileSearchForm_Load(object sender, EventArgs e)
         {
+            updateCbFileName();
+        }
+
+        private void updateCbFileName() 
+        {
+            cbFileName.Items.Clear();
             FileStream fs = new FileStream("search.log", FileMode.Open, FileAccess.Read);
             StreamReader sr = new StreamReader(fs);
             while (!sr.EndOfStream)
@@ -45,6 +51,7 @@ namespace P2P
             }
             sr.Close();
             fs.Close();
+        
         }
 
         private void mbtnDownoad_Click(object sender, EventArgs e)
@@ -110,6 +117,8 @@ namespace P2P
             sw.WriteLine(searchFileName);
             sw.Close();
             fsLog.Close();
+            updateCbFileName();
+            
         }
 
         private void mgFoundFiles_CellClick(object sender, DataGridViewCellEventArgs e)
