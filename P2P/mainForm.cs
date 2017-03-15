@@ -45,6 +45,7 @@ namespace P2P
         string thisUser;        //Строка с именем и IP текущего пользователя
 
         Int64 recievingFileSize;
+        Int64 recievingFileNumChunks;
         string recievingFileName;
         string recievingFileCheckSum;
 
@@ -331,15 +332,18 @@ namespace P2P
                     userRow = dgvr.Index;       //Запись номера строи
                 }
             }
-            mgUsers.Rows.RemoveAt(userRow);     //Удаление строки с пользователем
-
-            lbUsers.Items.Remove(leftingUser);      //Удаление пользователя
 
             if (mgFiles.CurrentRow.Index == userRow)        //Если выбран удаляемый пользователь
             {
                 mgFiles.Rows.Clear();      //Очистка списка файлов
                 mbtnDownload.Enabled = false;        //Отключение кнопки Download
             }
+
+            mgUsers.Rows.RemoveAt(userRow);     //Удаление строки с пользователем
+
+            lbUsers.Items.Remove(leftingUser);      //Удаление пользовател
+
+
         }
 
         private void LogWrite(string message)       //Запись строки в лог
@@ -520,8 +524,14 @@ namespace P2P
                 }
             }
             string fileRequest = "UFR" + thisUser + "^" + recievingFileName + "^" + selectedUserIP;        //Строка с запросом файла
+            UdpClient localUdpClient;        //Передатчик информациии
+            localUdpClient = new UdpClient(selectedUserIP, UdpPort);      //Класс передатчика
+            localUdpClient.EnableBroadcast = true;       //Разрешение вещания
             byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);     //Преобразование в массив байт
-            sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
+            localUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
+            localUdpClient.Close();
+            //byte[] toSend = Encoding.Unicode.GetBytes(fileRequest);     //Преобразование в массив байт
+            //sendingUdpClient.Send(toSend, toSend.Length);      //Отправка массива байтов
         }
 
         private async void TCPListener()      //Приемник TCP
@@ -634,6 +644,8 @@ namespace P2P
             string selectedUserIP = fSF.fFIP;        //Строка с выбранным пользователем
 
             recievingFileSize = Convert.ToInt64(fSF.fFSize);       //Размер скачиваемого файла (в байтах)
+
+            recievingFileNumChunks = Convert.ToInt64((recievingFileSize / (32 * 1024)) + 1);      //Число частей файла
 
             recievingFileCheckSum = fSF.fFCheckSum;
 
