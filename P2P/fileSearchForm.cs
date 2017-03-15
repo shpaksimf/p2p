@@ -37,7 +37,14 @@ namespace P2P
 
         private void fileSearchForm_Load(object sender, EventArgs e)
         {
-            
+            FileStream fs = new FileStream("search.log", FileMode.Open, FileAccess.Read);
+            StreamReader sr = new StreamReader(fs);
+            while (!sr.EndOfStream)
+            {
+                cbFileName.Items.Insert(0, sr.ReadLine());
+            }
+            sr.Close();
+            fs.Close();
         }
 
         private void mbtnDownoad_Click(object sender, EventArgs e)
@@ -97,6 +104,12 @@ namespace P2P
                 fileFound = false;
                 mbtnDownoad.Enabled = false;
             }
+
+            FileStream fsLog = new FileStream("search.log", FileMode.Append, FileAccess.Write);
+            StreamWriter sw = new StreamWriter(fsLog);
+            sw.WriteLine(searchFileName);
+            sw.Close();
+            fsLog.Close();
         }
 
         private void mgFoundFiles_CellClick(object sender, DataGridViewCellEventArgs e)

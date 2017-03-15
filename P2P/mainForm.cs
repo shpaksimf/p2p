@@ -297,19 +297,17 @@ namespace P2P
 
             NetworkStream ns = client.GetStream();      //Сетевой поток
 
-            /*{ // Отправка информации о файле (надежнее, чем по UDP)
-                byte[] fileName1 = ASCIIEncoding.Unicode.GetBytes(file.Name);
-                byte[] fileNameLength = BitConverter.GetBytes(fileName1.Length);
-                byte[] fileLength = BitConverter.GetBytes(file.Length);
-                await ns.WriteAsync(fileLength, 0, fileLength.Length);
-                await ns.WriteAsync(fileNameLength, 0, fileNameLength.Length);
-                await ns.WriteAsync(fileName1, 0, fileName1.Length);
-            }*/
-
             // Отправка файла
             int read;
             int totalWritten = 0;
             byte[] buffer = new byte[32 * 1024]; // части файла по 32 кБ
+
+            ////////////////////////////////////////////////////////////////////////////////////////////////////
+            byte[] header = new byte[4];        // ПРОВЕРИТЬ!!!!!!!!!!!!!!!!!!!!!!!!!
+            header = BitConverter.GetBytes(0xFFFFFFFF);        // ПРОВЕРИТЬ!!!!!!!!!!!!!!!!!!!!!!!!!
+            await ns.WriteAsync(header, 0, header.Length);        // ПРОВЕРИТЬ!!!!!!!!!!!!!!!!!!!!!!!!!
+            /////////////////////////////////////////////////////////////////////////////////////////////////
+
             while ((read = await fileStream.ReadAsync(buffer, 0, buffer.Length)) > 0)       //Цикл отправки файла
             {
                 await ns.WriteAsync(buffer, 0, read);       //Отправка части файла
@@ -528,7 +526,6 @@ namespace P2P
 
         private async void TCPListener()      //Приемник TCP
         {
-
             StringToForm toLog = LogWrite;        //Делегт записи в лог
             StringToFormString checkSum = ComputeMD5Checksum;
             TCPlistener = new TcpListener(IPAddress.Any, TcpPort);      //Новый приемник TCP
@@ -542,27 +539,18 @@ namespace P2P
 
                 try
                 {
-                    /*long fileLength;        //Длина файла
-                    string fileName;        //Строка с именем файла
-                    {       //Получение информации о файле
-                        byte[] fileNameBytes;
-                        byte[] fileNameLengthBytes = new byte[4]; //int32
-                        byte[] fileLengthBytes = new byte[8]; //int64
-
-                        await ns.ReadAsync(fileLengthBytes, 0, 8); // int64
-                        await ns.ReadAsync(fileNameLengthBytes, 0, 4); // int32
-                        fileNameBytes = new byte[BitConverter.ToInt32(fileNameLengthBytes, 0)];
-                        await ns.ReadAsync(fileNameBytes, 0, fileNameBytes.Length);
-
-                        fileLength = BitConverter.ToInt64(fileLengthBytes, 0);
-                        fileName = "share/" + ASCIIEncoding.Unicode.GetString(fileNameBytes);
-                    }*/
-
                     FileStream fileStream = File.Open("share/" +  recievingFileName, FileMode.Create);       //Поток работы с файлом
 
                     // Прием файла
                     int read;
                     int totalRead = 0;
+
+                    ////////////////////////////////////////////////////////////////////////////////////////////////
+                    byte[] header = new byte[4];        // ПРОВЕРИТЬ!!!!!!!!!!!!!!!!!!!!!!!!!
+                    await ns.ReadAsync(header, 0, header.Length);        // ПРОВЕРИТЬ!!!!!!!!!!!!!!!!!!!!!!!!!
+                    UInt32 command = BitConverter.ToUInt32(header, 0);        // ПРОВЕРИТЬ!!!!!!!!!!!!!!!!!!!!!!!!!
+                    ////////////////////////////////////////////////////////////////////////////////////////////////
+
                     byte[] buffer = new byte[32 * 1024]; // 32k chunks
                     while ((read = await ns.ReadAsync(buffer, 0, buffer.Length)) > 0)
                     {
